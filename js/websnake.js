@@ -201,6 +201,19 @@ class Player {
     }
 }
 
+function create_bot(engine, scene, pebbles) {
+    const bot_player = new Player(scene, pebbles, Vec3(10,0,0));
+    bot_player.time = 0
+    scene.registerBeforeRender(function () {
+        const dt = engine.getDeltaTime()
+        bot_player.time += dt
+        bot_player.setPosition(Vec3(
+            Math.sin(bot_player.time / 1900) * 10,
+            Math.cos(bot_player.time / 1900) * 10,
+            0))
+    })
+    return bot_player
+}
 
 function start_websnake() {
     const canvas = document.getElementById("renderCanvas"); // Get the canvas element
@@ -241,6 +254,9 @@ function start_websnake() {
         const players = [
             local_player,
         ];
+
+
+        players.push(create_bot(engine, scene, pebbles))
 
         // For some reason, this takes a long time to start working.
         input.listen_to_keyboard(scene);
