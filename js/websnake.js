@@ -29,6 +29,62 @@ function get_button_prettynames_for_gamepad(gamepad) {
     return null;
 }
 
+class Input {
+    constructor() {
+        this.deadzone = 0.25;
+        this.deadzone_sq = this.deadzone * this.deadzone;
+        this.buttons = {};
+        this.axes = {};
+    }
+    update(dt) {
+        for (var key in this.buttons)
+        {
+            var value = this.buttons[key];
+            this.buttons[key] = 0;
+        }
+        for (var key in this.axes)
+        {
+            var value = this.axes[key];
+            this.axes[key] = 0;
+        }
+    }
+    on_button_down(gamepad, btn) {
+        //~ console.log(btn)
+        this.buttons[btn] = 1;
+    }
+
+    on_button_up(gamepad, btn) {
+        //~ console.log(btn)
+        this.buttons[btn] = 0;
+    }
+
+    on_axis(gamepad, name, values) {
+        const v = this.axes[name] || Vec2(0,0);
+
+        v.x = values.x;
+        v.y = values.y;
+        if (v.lengthSquared() < this.deadzone_sq) {
+            v.x = 0;
+            v.y = 0;
+        }
+        //~ console.log("x:" + v.x.toFixed(3) + " y:" + v.y.toFixed(3));
+        this.axes[name] = v;
+    }
+    listen_to_keyboard(scene) {
+        scene.onKeyboardObservable.add((kbInfo) => {
+            switch (kbInfo.type) {
+                case BABYLON.KeyboardEventTypes.KEYDOWN:
+                    this.on_button_down("keyboard", kbInfo.event.key);
+                    break;
+
+                case BABYLON.KeyboardEventTypes.KEYUP:
+                    this.on_button_up("keyboard", kbInfo.event.key);
+                    break;
+            }
+        });
+    }
+}
+
 function create_gamepad_manager(local_player) {
     var gamepadManager = new BABYLON.GamepadManager();
     gamepadManager.onGamepadConnectedObservable.add((gamepad, state)=>{
@@ -49,12 +105,19 @@ function create_gamepad_manager(local_player) {
 }
 
 class Player {
-    constructor(body) {
+    constructor(body, input) {
         this.gamepad = null;
+        this.input = input
         this.body = body
         this.deadzone = 0.25
         this.deadzone_sq = this.deadzone * this.deadzone;
         this.speed = 0.005;
+
+        // Clear out movement keys to ensure valid values.
+        this.input.on_button_up("keyboard", 'w')
+        this.input.on_button_up("keyboard", 'a')
+        this.input.on_button_up("keyboard", 's')
+        this.input.on_button_up("keyboard", 'd')
     }
     update(dt) {
         var move = this.get_move();
@@ -68,7 +131,10 @@ class Player {
         if (this.gamepad) {
             return this.stick_to_vec2(this.gamepad.leftStick);
         }
-        return Vec2(0,0);
+        const v = Vec2(0,0);
+        v.x = this.input.buttons.d - this.input.buttons.a;
+        v.y = this.input.buttons.s - this.input.buttons.w;
+        return v;
     }
     stick_to_vec2(values) {
         const v = Vec2(values.x, values.y);
@@ -112,11 +178,14 @@ function start_websnake() {
         player_body.position = Vec3(0,0,0);
         camera.lockedTarget = player_body;
 
-        const local_player = new Player(player_body);
+        const input = new Input();
+        const local_player = new Player(player_body, input);
         const players = [
             local_player,
         ];
 
+        // For some reason, this takes a long time to start working.
+        input.listen_to_keyboard(scene);
         var gamepadManager = create_gamepad_manager(local_player);
 
         scene.registerBeforeRender(function () {
