@@ -116,15 +116,15 @@ class PlayerInput {
     }
     get_move() {
         if (this.gamepad) {
-            return this.stick_to_vec2(this.gamepad.leftStick);
+            return this.stick_to_vec3(this.gamepad.leftStick);
         }
-        const v = Vec2(0,0);
+        const v = Vec3(0,0,0);
         v.x = this.input.buttons.d - this.input.buttons.a;
         v.y = this.input.buttons.s - this.input.buttons.w;
         return v;
     }
-    stick_to_vec2(values) {
-        const v = Vec2(values.x, values.y);
+    stick_to_vec3(values) {
+        const v = Vec3(values.x, values.y);
         return this.apply_deadzone(v);
     }
     apply_deadzone(v) {
@@ -142,7 +142,7 @@ class Player {
         this.head = head
         this.speed = 0.005;
         this.body = [head]
-        this.move_input = Vec2(0,0);
+        this.move_input = Vec3(0,0);
     }
     update(dt) {
         var move = this.move_input
@@ -156,9 +156,7 @@ class Player {
                 b.position = BABYLON.Vector3.Lerp(b.position, dest, 0.1);
             }
         }
-        // For some reason this.head.position.add(move) produces Nan.
-        this.head.position.x += move.x;
-        this.head.position.y += move.y;
+        this.head.position.addInPlace(move);
     }
     collide(pebble) {
         pebble.dispose();
