@@ -8,6 +8,10 @@ function Vec2(x,y) {
     return new BABYLON.Vector2(x,y);
 }
 
+function last(list) {
+    return list[list.length - 1];
+}
+
 function random_vector(max_radius) {
     // sqrt for uniform distribution: https://stackoverflow.com/a/50746409/79125
     const r = Math.sqrt(Math.random()) * max_radius
@@ -105,13 +109,14 @@ function create_gamepad_manager(local_player) {
 }
 
 class Player {
-    constructor(body, input) {
+    constructor(head, input) {
         this.gamepad = null;
         this.input = input
-        this.body = body
+        this.head = head
         this.deadzone = 0.25
         this.deadzone_sq = this.deadzone * this.deadzone;
         this.speed = 0.005;
+        this.body = [head]
 
         // Clear out movement keys to ensure valid values.
         this.input.on_button_up("keyboard", 'w')
@@ -123,9 +128,17 @@ class Player {
         var move = this.get_move();
         //~ console.log("x:" + move.x.toFixed(3) + " y:" + move.y.toFixed(3));
         move.scaleInPlace(-1 * this.speed * dt); // axes are both flipped
-        // For some reason this.body.position.add(move) produces Nan.
-        this.body.position.x += move.x;
-        this.body.position.y += move.y;
+        if (move.lengthSquared() > 0.0001) {
+            for (let i = this.body.length - 1; i > 0; i--)
+            {
+                const b = this.body[i];
+                const dest = this.body[i-1].position;
+                b.position = BABYLON.Vector3.Lerp(b.position, dest, 0.1);
+            }
+        }
+        // For some reason this.head.position.add(move) produces Nan.
+        this.head.position.x += move.x;
+        this.head.position.y += move.y;
     }
     get_move() {
         if (this.gamepad) {
@@ -152,6 +165,11 @@ class Player {
         this.grow();
     }
     grow() {
+        const box = BABYLON.MeshBuilder.CreateBox("player_body", {
+            size: 0.8
+        });
+        box.position = last(this.body).position;
+        this.body.push(box)
     }
 }
 
@@ -174,13 +192,13 @@ function start_websnake() {
         camera.maxCameraSpeed = 10;
         camera.attachControl(canvas, true);
 
-        const player_body = BABYLON.MeshBuilder.CreateBox("player_body", {});
-        player_body.position = Vec3(0,0,0);
-        player_body.actionManager = new BABYLON.ActionManager(scene);
-        camera.lockedTarget = player_body;
+        const player_head = BABYLON.MeshBuilder.CreateBox("player_head", {});
+        player_head.position = Vec3(0,0,0);
+        player_head.actionManager = new BABYLON.ActionManager(scene);
+        camera.lockedTarget = player_head;
 
         const input = new Input();
-        const local_player = new Player(player_body, input);
+        const local_player = new Player(player_head, input);
         const players = [
             local_player,
         ];
@@ -189,7 +207,7 @@ function start_websnake() {
             const pebble = BABYLON.MeshBuilder.CreateBox("pebble", {});
             pebble.position = random_vector(10);
 
-            player_body.actionManager.registerAction(
+            player_head.actionManager.registerAction(
                 new BABYLON.ExecuteCodeAction(
                     {
                         trigger: BABYLON.ActionManager.OnIntersectionEnterTrigger, 
