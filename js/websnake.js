@@ -122,6 +122,34 @@ function create_gamepad_manager(input) {
     return gamepadManager;
 }
 
+class Player {
+    constructor(gamepad, body) {
+        this.gamepad = gamepad
+        this.body = body
+        this.deadzone = 0.25
+        this.deadzone_sq = this.deadzone * this.deadzone;
+        this.speed = 0.005;
+    }
+    update(dt) {
+        var move = this.stick_to_vec2(this.gamepad.leftStick);
+        //~ console.log("x:" + move.x.toFixed(3) + " y:" + move.y.toFixed(3));
+        move.scaleInPlace(-1 * this.speed * dt); // axes are both flipped
+        // For some reason this.body.position.add(move) produces Nan.
+        this.body.position.x += move.x;
+        this.body.position.y += move.y;
+    }
+    stick_to_vec2(values) {
+        const v = Vec2(values.x, values.y);
+        return this.apply_deadzone(v);
+    }
+    apply_deadzone(v) {
+        if (v.lengthSquared() < this.deadzone_sq) {
+            v.x = 0;
+            v.y = 0;
+        }
+        return v
+    }
+}
 
 function start_websnake() {
     const canvas = document.getElementById("renderCanvas"); // Get the canvas element
@@ -136,9 +164,9 @@ function start_websnake() {
 
         const camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 0, 30), scene);
         camera.radius = 30;
-        camera.heightOffset = 10;
+        camera.heightOffset = 0;
         camera.rotationOffset = 0;
-        camera.cameraAcceleration = 0.005;
+        camera.cameraAcceleration = 0.05;
         camera.maxCameraSpeed = 10;
         camera.attachControl(canvas, true);
 
@@ -148,35 +176,21 @@ function start_websnake() {
             pebble.position = random_vector(10);
         }
 
-        const box = BABYLON.MeshBuilder.CreateBox("box", {});
-        camera.lockedTarget = box;
+        const player_body = BABYLON.MeshBuilder.CreateBox("player_body", {});
+        player_body.position = Vec3(0,0,0);
+        camera.lockedTarget = player_body;
 
-        var direction = true;
-        scene.registerBeforeRender(function () {
-            // Check if box is moving right
-            if (box.position.x < 2 && direction) {
-                // Increment box position to the right
-                box.position.x += 0.05;
-            }
-            else {
-                // Swap directions to move left
-                direction = false;
-            }
+        var gamepadManager = new BABYLON.GamepadManager();
+        gamepadManager.onGamepadConnectedObservable.add((gamepad, state)=>{
+            const msg = "Connected: " + gamepad.id;
+            console.log(msg);
 
-            // Check if box is moving left
-            if (box.position.x > -2 && !direction) {
-                // Decrement box position to the left
-                box.position.x -= 0.05;
-            }
-            else {
-                // Swap directions to move right
-                direction = true;
-            }
+            var p = new Player(gamepad, player_body);
+            scene.registerBeforeRender(function () {
+                p.update(engine.getDeltaTime());
+            })
         });
 
-
-        const input = new Input();
-        var gamepadManager = create_gamepad_manager(input);
 
         return scene;
     };
