@@ -165,7 +165,7 @@ class Player {
         this.grow();
     }
     grow() {
-        const box = BABYLON.MeshBuilder.CreateBox("player_body", {
+        const box = BABYLON.MeshBuilder.CreateSphere("player_body", {
             size: 0.8
         });
         box.position = last(this.body).position;
@@ -192,7 +192,7 @@ function start_websnake() {
         camera.maxCameraSpeed = 10;
         camera.attachControl(canvas, true);
 
-        const player_head = BABYLON.MeshBuilder.CreateBox("player_head", {});
+        const player_head = BABYLON.MeshBuilder.CreateSphere("player_head", {});
         player_head.position = Vec3(0,0,0);
         player_head.actionManager = new BABYLON.ActionManager(scene);
         camera.lockedTarget = player_head;
@@ -204,7 +204,13 @@ function start_websnake() {
         ];
 
         for (let i = 0; i < 1000; ++i) {
-            const pebble = BABYLON.MeshBuilder.CreateBox("pebble", {});
+            const pebble = BABYLON.MeshBuilder.CreateTorusKnot("pebble", {
+                radius: 0.3,
+                tube: 0.1,
+                radialSegments: 32,
+                p:5,
+                q:2
+            });
             pebble.position = random_vector(100);
 
             player_head.actionManager.registerAction(
