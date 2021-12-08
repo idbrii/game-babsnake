@@ -8,6 +8,14 @@ function Vec2(x,y) {
     return new BABYLON.Vector2(x,y);
 }
 
+function log_vec3(label, v) {
+    console.log(label, v.x.toFixed(3), v.y.toFixed(3), v.z.toFixed(3))
+}
+
+function easeOutCubic(x) {
+    return 1 - Math.pow(1 - x, 3);
+}
+
 function last(list) {
     return list[list.length - 1];
 }
@@ -103,8 +111,9 @@ function create_gamepad_manager(player_input) {
 }
 
 class PlayerInput {
-    constructor(input, target) {
-        this.input = input;
+    constructor(scene, input, target) {
+        this.scene = scene
+        this.input = input
         this.target = target
         this.deadzone = 0.25
         this.deadzone_sq = this.deadzone * this.deadzone;
@@ -117,12 +126,22 @@ class PlayerInput {
 
         this.input.on_button_up("keyboard", 'b')
         this.input.on_button_up("keyboard", 'v')
+
+        this.use_mouse = false
+        let self = this // capture normal var for closures
+        scene.onPointerDown = function(evt, pickResult) {
+            console.log("Use mouse input")
+            self.use_mouse = true
+        }
+        scene.onPointerMove = function(evt, pickInfo) {
+            self.use_mouse = true
+        }
     }
     update(dt) {
         this.target.move_input = this.get_move();
     }
     get_move() {
-        const sum = Vec3(0,0,0);
+        let sum = Vec3(0,0,0);
         let count = 0
 
         if (this.gamepad) {
@@ -141,9 +160,36 @@ class PlayerInput {
             count += 1
         }
 
-        if (count > 1) {
+        if (count > 0) {
             sum.scaleInPlace(1/count)
+            this.use_mouse = false
         }
+
+        if (this.use_mouse) {
+            let v = Vec3(
+                this.scene.pointerX,
+                this.scene.pointerY,
+                0)
+            let half_screen = Vec3(
+                this.scene.engine.getRenderWidth(),
+                this.scene.engine.getRenderHeight(),
+                0).scale(0.5)
+            v.subtractInPlace(half_screen)
+            v.x /= half_screen.x
+            v.y /= half_screen.y
+            // Ease out to make more responsive at centre
+            v.x = easeOutCubic(v.x)
+            v.y = easeOutCubic(v.y)
+            sum = v
+            // HACK: Since each axis can be length 1, our sum might be length =
+            // 2, but we'll cap at 1 below. We should remap the input to a
+            // circle instead of a square.
+        }
+
+        // Limit to max length 1.
+        const len = Math.min(1, sum.length())
+        sum.normalize(len)
+        sum.scaleInPlace(len)
         return sum;
     }
     stick_to_vec3(values) {
@@ -264,6 +310,7 @@ function start_websnake() {
     const createScene = function () {
 
         const scene = new BABYLON.Scene(engine);  
+        scene.engine = engine
         const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0));
 
         const camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 0, 30), scene);
@@ -290,7 +337,7 @@ function start_websnake() {
         camera.lockedTarget = local_player.head;
 
         const input = new Input();
-        const player_input = new PlayerInput(input, local_player);
+        const player_input = new PlayerInput(scene, input, local_player);
         const players = [
             local_player,
         ];
