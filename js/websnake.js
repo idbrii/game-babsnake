@@ -147,6 +147,12 @@ class Player {
         }
         return v
     }
+    collide(pebble) {
+        pebble.dispose();
+        this.grow();
+    }
+    grow() {
+    }
 }
 
 
@@ -168,14 +174,9 @@ function start_websnake() {
         camera.maxCameraSpeed = 10;
         camera.attachControl(canvas, true);
 
-        for (let i = 0; i < 10; ++i)
-        {
-            const pebble = BABYLON.MeshBuilder.CreateBox("pebble", {});
-            pebble.position = random_vector(10);
-        }
-
         const player_body = BABYLON.MeshBuilder.CreateBox("player_body", {});
         player_body.position = Vec3(0,0,0);
+        player_body.actionManager = new BABYLON.ActionManager(scene);
         camera.lockedTarget = player_body;
 
         const input = new Input();
@@ -183,6 +184,24 @@ function start_websnake() {
         const players = [
             local_player,
         ];
+
+        for (let i = 0; i < 10; ++i) {
+            const pebble = BABYLON.MeshBuilder.CreateBox("pebble", {});
+            pebble.position = random_vector(10);
+
+            player_body.actionManager.registerAction(
+                new BABYLON.ExecuteCodeAction(
+                    {
+                        trigger: BABYLON.ActionManager.OnIntersectionEnterTrigger, 
+                        parameter: { 
+                            mesh: pebble
+                        }
+                    },
+                    (evt) => {
+                        local_player.collide(pebble);
+                    }
+                ));
+        }
 
         // For some reason, this takes a long time to start working.
         input.listen_to_keyboard(scene);
