@@ -21,6 +21,10 @@ function random_vector(max_radius) {
     return Vec3(x,y,0);
 }
 
+function random_float(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
 
 function get_button_prettynames_for_gamepad(gamepad) {
     if (gamepad instanceof BABYLON.Xbox360Pad) {
@@ -110,6 +114,8 @@ class PlayerInput {
         this.input.on_button_up("keyboard", 'a')
         this.input.on_button_up("keyboard", 's')
         this.input.on_button_up("keyboard", 'd')
+
+        this.input.on_button_up("keyboard", 'b')
     }
     update(dt) {
         this.target.move_input = this.get_move();
@@ -133,6 +139,9 @@ class PlayerInput {
             v.y = 0;
         }
         return v
+    }
+    is_requesting_bot() {
+        return this.input.buttons.b
     }
 }
 
@@ -202,15 +211,21 @@ class Player {
 }
 
 function create_bot(engine, scene, pebbles) {
-    const bot_player = new Player(scene, pebbles, Vec3(10,0,0));
+    const bot_player = new Player(scene, pebbles, random_vector(10));
     bot_player.time = 0
+    bot_player.movement_center = random_vector(10)
+    bot_player.dir = random_float(0.5, 1)
+    if (Math.random() > 0.5) {
+        bot_player.dir *= -1
+    }
     scene.registerBeforeRender(function () {
         const dt = engine.getDeltaTime()
-        bot_player.time += dt
-        bot_player.setPosition(Vec3(
+        bot_player.time += dt * bot_player.dir
+        const head_pos = bot_player.movement_center.add(Vec3(
             Math.sin(bot_player.time / 1900) * 10,
             Math.cos(bot_player.time / 1900) * 10,
             0))
+        bot_player.setPosition(head_pos)
     })
     return bot_player
 }
@@ -262,13 +277,21 @@ function start_websnake() {
         input.listen_to_keyboard(scene);
         var gamepadManager = create_gamepad_manager(player_input);
 
+        let time = 0
+        let next_bot = 0
         scene.registerBeforeRender(function () {
             const dt = engine.getDeltaTime()
+            time += dt
             player_input.update(dt);
             for (var i in players)
             {
                 const p = players[i];
                 p.update(dt);
+            }
+            if (player_input.is_requesting_bot() && next_bot < time) {
+                console.log("Created bot")
+                next_bot = time + 2000
+                players.push(create_bot(engine, scene, pebbles))
             }
         })
 
