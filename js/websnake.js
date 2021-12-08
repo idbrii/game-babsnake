@@ -137,7 +137,7 @@ class PlayerInput {
 }
 
 class Player {
-    constructor(scene, pos) {
+    constructor(scene, pebbles, pos) {
         this.head = BABYLON.MeshBuilder.CreateSphere("player_head", {});
         this.head.actionManager = new BABYLON.ActionManager(scene);
         this.body = [this.head]
@@ -147,6 +147,23 @@ class Player {
 
         // tuning
         this.speed = 0.005;
+
+        for (let i in pebbles)
+        {
+            const pebble = pebbles[i];
+            this.head.actionManager.registerAction(
+                new BABYLON.ExecuteCodeAction(
+                    {
+                        trigger: BABYLON.ActionManager.OnIntersectionEnterTrigger, 
+                        parameter: { 
+                            mesh: pebble
+                        }
+                    },
+                    (evt) => {
+                        this.collide(pebble);
+                    }
+                ));
+        }
     }
     update(dt) {
         var move = this.move_input
@@ -203,8 +220,20 @@ function start_websnake() {
         camera.maxCameraSpeed = 10;
         camera.attachControl(canvas, true);
 
+        const pebbles = []
+        for (let i = 0; i < 1000; ++i) {
+            const p = BABYLON.MeshBuilder.CreateTorusKnot("pebble", {
+                radius: 0.3,
+                tube: 0.1,
+                radialSegments: 32,
+                p:5,
+                q:2
+            });
+            p.position = random_vector(100);
+            pebbles.push(p)
+        }
 
-        const local_player = new Player(scene, Vec3(0,0,0));
+        const local_player = new Player(scene, pebbles, Vec3(0,0,0));
         camera.lockedTarget = local_player.head;
 
         const input = new Input();
@@ -212,30 +241,6 @@ function start_websnake() {
         const players = [
             local_player,
         ];
-
-        for (let i = 0; i < 1000; ++i) {
-            const pebble = BABYLON.MeshBuilder.CreateTorusKnot("pebble", {
-                radius: 0.3,
-                tube: 0.1,
-                radialSegments: 32,
-                p:5,
-                q:2
-            });
-            pebble.position = random_vector(100);
-
-            local_player.head.actionManager.registerAction(
-                new BABYLON.ExecuteCodeAction(
-                    {
-                        trigger: BABYLON.ActionManager.OnIntersectionEnterTrigger, 
-                        parameter: { 
-                            mesh: pebble
-                        }
-                    },
-                    (evt) => {
-                        local_player.collide(pebble);
-                    }
-                ));
-        }
 
         // For some reason, this takes a long time to start working.
         input.listen_to_keyboard(scene);
