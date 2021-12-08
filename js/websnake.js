@@ -137,12 +137,16 @@ class PlayerInput {
 }
 
 class Player {
-    constructor() {
-        this.gamepad = null;
-        this.speed = 0.005;
+    constructor(scene, pos) {
         this.head = BABYLON.MeshBuilder.CreateSphere("player_head", {});
+        this.head.actionManager = new BABYLON.ActionManager(scene);
         this.body = [this.head]
+        this.head.position = pos;
+        this.gamepad = null;
         this.move_input = Vec3(0,0);
+
+        // tuning
+        this.speed = 0.005;
     }
     update(dt) {
         var move = this.move_input
@@ -200,9 +204,7 @@ function start_websnake() {
         camera.attachControl(canvas, true);
 
 
-        const local_player = new Player();
-        local_player.head.position = Vec3(0,0,0);
-        local_player.head.actionManager = new BABYLON.ActionManager(scene);
+        const local_player = new Player(scene, Vec3(0,0,0));
         camera.lockedTarget = local_player.head;
 
         const input = new Input();
