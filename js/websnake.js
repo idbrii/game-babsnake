@@ -29,42 +29,46 @@ function get_button_prettynames_for_gamepad(gamepad) {
     return null;
 }
 
-function create_gamepad_manager(players, camera) {
+function create_gamepad_manager(local_player) {
     var gamepadManager = new BABYLON.GamepadManager();
     gamepadManager.onGamepadConnectedObservable.add((gamepad, state)=>{
         const msg = "Connected: " + gamepad.id;
         console.log(msg);
 
-        const player_body = BABYLON.MeshBuilder.CreateBox("player_body", {});
-        player_body.position = Vec3(0,0,0);
-        var p = new Player(gamepad, player_body);
-        players[gamepad] = p;
-        camera.lockedTarget = player_body;
+        local_player.gamepad = gamepad
     });
 
     gamepadManager.onGamepadDisconnectedObservable.add((gamepad, state)=>{
         const msg = "Disconnected: " + gamepad.id;
         console.log(msg);
-        players[gamepad] = null;
+        if (local_player.gamepad == gamepad) {
+            local_player.gamepad = null
+        }
     })
     return gamepadManager;
 }
 
 class Player {
-    constructor(gamepad, body) {
-        this.gamepad = gamepad
+    constructor(body) {
+        this.gamepad = null;
         this.body = body
         this.deadzone = 0.25
         this.deadzone_sq = this.deadzone * this.deadzone;
         this.speed = 0.005;
     }
     update(dt) {
-        var move = this.stick_to_vec2(this.gamepad.leftStick);
+        var move = this.get_move();
         //~ console.log("x:" + move.x.toFixed(3) + " y:" + move.y.toFixed(3));
         move.scaleInPlace(-1 * this.speed * dt); // axes are both flipped
         // For some reason this.body.position.add(move) produces Nan.
         this.body.position.x += move.x;
         this.body.position.y += move.y;
+    }
+    get_move() {
+        if (this.gamepad) {
+            return this.stick_to_vec2(this.gamepad.leftStick);
+        }
+        return Vec2(0,0);
     }
     stick_to_vec2(values) {
         const v = Vec2(values.x, values.y);
@@ -78,6 +82,7 @@ class Player {
         return v
     }
 }
+
 
 function start_websnake() {
     const canvas = document.getElementById("renderCanvas"); // Get the canvas element
@@ -103,14 +108,21 @@ function start_websnake() {
             pebble.position = random_vector(10);
         }
 
-        const players = {}
+        const player_body = BABYLON.MeshBuilder.CreateBox("player_body", {});
+        player_body.position = Vec3(0,0,0);
+        camera.lockedTarget = player_body;
 
-        var gamepadManager = create_gamepad_manager(players, camera);
+        const local_player = new Player(player_body);
+        const players = [
+            local_player,
+        ];
+
+        var gamepadManager = create_gamepad_manager(local_player);
 
         scene.registerBeforeRender(function () {
-            for (gamepad in players)
+            for (var i in players)
             {
-                const p = players[gamepad];
+                const p = players[i];
                 p.update(engine.getDeltaTime());
             }
         })
