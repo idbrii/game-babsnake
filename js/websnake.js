@@ -203,9 +203,9 @@ function start_websnake() {
             local_player,
         ];
 
-        for (let i = 0; i < 10; ++i) {
+        for (let i = 0; i < 1000; ++i) {
             const pebble = BABYLON.MeshBuilder.CreateBox("pebble", {});
-            pebble.position = random_vector(10);
+            pebble.position = random_vector(100);
 
             player_head.actionManager.registerAction(
                 new BABYLON.ExecuteCodeAction(
