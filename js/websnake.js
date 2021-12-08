@@ -248,7 +248,6 @@ function start_websnake() {
     const createScene = function () {
 
         const scene = new BABYLON.Scene(engine);  
-
         const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0));
 
         const camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 0, 30), scene);
@@ -257,7 +256,6 @@ function start_websnake() {
         camera.rotationOffset = 0;
         camera.cameraAcceleration = 0.002;
         camera.maxCameraSpeed = 10;
-        camera.attachControl(canvas, true);
 
         const pebbles = []
         for (let i = 0; i < 1000; ++i) {
