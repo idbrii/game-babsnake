@@ -116,6 +116,7 @@ class PlayerInput {
         this.input.on_button_up("keyboard", 'd')
 
         this.input.on_button_up("keyboard", 'b')
+        this.input.on_button_up("keyboard", 'v')
     }
     update(dt) {
         this.target.move_input = this.get_move();
@@ -140,8 +141,11 @@ class PlayerInput {
         }
         return v
     }
-    is_requesting_bot() {
+    is_requesting_add_bot() {
         return this.input.buttons.b
+    }
+    is_requesting_remove_bot() {
+        return this.input.buttons.v
     }
 }
 
@@ -207,6 +211,13 @@ class Player {
         });
         box.position = last(this.body).position;
         this.body.push(box)
+    }
+    remove() {
+        for (let i in this.body)
+        {
+            const b = this.body[i];
+            b.dispose()
+        }
     }
 }
 
@@ -278,7 +289,7 @@ function start_websnake() {
         var gamepadManager = create_gamepad_manager(player_input);
 
         let time = 0
-        let next_bot = 0
+        let next_debug_input = 0
         scene.registerBeforeRender(function () {
             const dt = engine.getDeltaTime()
             time += dt
@@ -288,10 +299,20 @@ function start_websnake() {
                 const p = players[i];
                 p.update(dt);
             }
-            if (player_input.is_requesting_bot() && next_bot < time) {
+            if (player_input.is_requesting_add_bot() && next_debug_input < time) {
+                next_debug_input = time + 2000
                 console.log("Created bot")
-                next_bot = time + 2000
                 players.push(create_bot(engine, scene, pebbles))
+            }
+            if (player_input.is_requesting_remove_bot()
+                && next_debug_input < time
+                && players.length > 1
+            ) {
+                next_debug_input = time + 2000
+                console.log("Deleted bot")
+                const bot = last(players)
+                bot.remove()
+                players.splice(players.length - 1, 1)
             }
         })
 
