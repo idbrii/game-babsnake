@@ -137,11 +137,11 @@ class PlayerInput {
 }
 
 class Player {
-    constructor(head) {
+    constructor() {
         this.gamepad = null;
-        this.head = head
         this.speed = 0.005;
-        this.body = [head]
+        this.head = BABYLON.MeshBuilder.CreateSphere("player_head", {});
+        this.body = [this.head]
         this.move_input = Vec3(0,0);
     }
     update(dt) {
@@ -155,8 +155,17 @@ class Player {
                 const dest = this.body[i-1].position;
                 b.position = BABYLON.Vector3.Lerp(b.position, dest, 0.1);
             }
+            this.setPosition(this.head.position.add(move))
         }
-        this.head.position.addInPlace(move);
+    }
+    setPosition(pos) {
+        for (let i = this.body.length - 1; i > 0; i--)
+        {
+            const b = this.body[i];
+            const dest = this.body[i-1].position;
+            b.position = BABYLON.Vector3.Lerp(b.position, dest, 0.1);
+        }
+        this.head.position = pos
     }
     collide(pebble) {
         pebble.dispose();
@@ -190,13 +199,13 @@ function start_websnake() {
         camera.maxCameraSpeed = 10;
         camera.attachControl(canvas, true);
 
-        const player_head = BABYLON.MeshBuilder.CreateSphere("player_head", {});
-        player_head.position = Vec3(0,0,0);
-        player_head.actionManager = new BABYLON.ActionManager(scene);
-        camera.lockedTarget = player_head;
+
+        const local_player = new Player();
+        local_player.head.position = Vec3(0,0,0);
+        local_player.head.actionManager = new BABYLON.ActionManager(scene);
+        camera.lockedTarget = local_player.head;
 
         const input = new Input();
-        const local_player = new Player(player_head);
         const player_input = new PlayerInput(input, local_player);
         const players = [
             local_player,
@@ -212,7 +221,7 @@ function start_websnake() {
             });
             pebble.position = random_vector(100);
 
-            player_head.actionManager.registerAction(
+            local_player.head.actionManager.registerAction(
                 new BABYLON.ExecuteCodeAction(
                     {
                         trigger: BABYLON.ActionManager.OnIntersectionEnterTrigger, 
