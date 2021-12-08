@@ -18,50 +18,7 @@ function random_vector(max_radius) {
 }
 
 
-class Input {
-    constructor() {
-        this.deadzone = 0.25;
-        this.deadzone_sq = this.deadzone * this.deadzone;
-        this.buttons = {};
-        this.axes = {};
-    }
-    update(dt) {
-        for (var key in this.buttons)
-        {
-            var value = this.buttons[key];
-            this.buttons[key] = 0;
-        }
-        for (var key in this.axes)
-        {
-            var value = this.axes[key];
-            this.axes[key] = 0;
-        }
-    }
-    on_button_down(gamepad, btn) {
-        //~ console.log(btn)
-        this.buttons[btn] = 1;
-    }
-
-    on_button_up(gamepad, btn) {
-        //~ console.log(btn)
-        this.buttons[btn] = 0;
-    }
-
-    on_axis(gamepad, name, values) {
-        const v = this.axes[name] || Vec2(0,0);
-
-        v.x = values.x;
-        v.y = values.y;
-        if (v.lengthSquared() < this.deadzone_sq) {
-            v.x = 0;
-            v.y = 0;
-        }
-        //~ console.log("x:" + v.x.toFixed(3) + " y:" + v.y.toFixed(3));
-        this.axes[name] = v;
-    }
-}
-
-function get_button_ids_for_gamepad(gamepad) {
+function get_button_prettynames_for_gamepad(gamepad) {
     if (gamepad instanceof BABYLON.Xbox360Pad) {
         return BABYLON.Xbox360Button;
     } else if (gamepad instanceof BABYLON.DualShockPad) {
@@ -70,56 +27,6 @@ function get_button_ids_for_gamepad(gamepad) {
         return null;
     }
     return null;
-}
-
-function create_gamepad_manager(input) {
-    var gamepadManager = new BABYLON.GamepadManager();
-
-    gamepadManager.onGamepadConnectedObservable.add((gamepad, state)=>{
-        const msg = "Connected: " + gamepad.id;
-        console.log(msg);
-
-        const button_ids = get_button_ids_for_gamepad(gamepad);
-
-        // button down/up events
-        gamepad.onButtonDownObservable.add((button, state)=>{
-            input.on_button_down(gamepad, button);
-        })
-        gamepad.onButtonUpObservable.add((button, state)=>{
-            input.on_button_up(gamepad, button);
-        })
-
-        // Stick events
-        gamepad.onleftstickchanged((values)=>{
-            input.on_axis(gamepad, "leftstick", values);
-        });
-        gamepad.onrightstickchanged((values)=>{
-            input.on_axis(gamepad, "rightstick", values);
-        });
-
-        // Triggers events
-        gamepad.onlefttriggerchanged((value)=>{
-            input.on_axis(gamepad, "lefttrigger", values);
-        })
-        gamepad.onrighttriggerchanged((value)=>{
-            input.on_axis(gamepad, "righttrigger", values);
-        })
-
-        // DPad events
-        gamepad.onPadDownObservable.add((button, state)=>{
-            input.on_button_down(gamepad, button);
-        })
-        gamepad.onPadUpObservable.add((button, state)=>{
-            input.on_button_up(gamepad, button);
-        })
-    })
-
-    gamepadManager.onGamepadDisconnectedObservable.add((gamepad, state)=>{
-        const msg = "Disconnected: " + gamepad.id;
-        console.log(msg);
-    })
-
-    return gamepadManager;
 }
 
 class Player {
@@ -180,17 +87,30 @@ function start_websnake() {
         player_body.position = Vec3(0,0,0);
         camera.lockedTarget = player_body;
 
+        const players = {}
+
         var gamepadManager = new BABYLON.GamepadManager();
         gamepadManager.onGamepadConnectedObservable.add((gamepad, state)=>{
             const msg = "Connected: " + gamepad.id;
             console.log(msg);
 
             var p = new Player(gamepad, player_body);
-            scene.registerBeforeRender(function () {
-                p.update(engine.getDeltaTime());
-            })
+            players[gamepad] = p;
         });
 
+        gamepadManager.onGamepadDisconnectedObservable.add((gamepad, state)=>{
+            const msg = "Disconnected: " + gamepad.id;
+            console.log(msg);
+            players[gamepad] = null;
+        })
+
+        scene.registerBeforeRender(function () {
+            for (gamepad in players)
+            {
+                const p = players[gamepad];
+                p.update(engine.getDeltaTime());
+            }
+        })
 
         return scene;
     };
