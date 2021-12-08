@@ -41,16 +41,6 @@ class Input {
         this.axes = {};
     }
     update(dt) {
-        for (var key in this.buttons)
-        {
-            var value = this.buttons[key];
-            this.buttons[key] = 0;
-        }
-        for (var key in this.axes)
-        {
-            var value = this.axes[key];
-            this.axes[key] = 0;
-        }
     }
     on_button_down(gamepad, btn) {
         //~ console.log(btn)
