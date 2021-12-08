@@ -29,6 +29,27 @@ function get_button_prettynames_for_gamepad(gamepad) {
     return null;
 }
 
+function create_gamepad_manager(players, camera) {
+    var gamepadManager = new BABYLON.GamepadManager();
+    gamepadManager.onGamepadConnectedObservable.add((gamepad, state)=>{
+        const msg = "Connected: " + gamepad.id;
+        console.log(msg);
+
+        const player_body = BABYLON.MeshBuilder.CreateBox("player_body", {});
+        player_body.position = Vec3(0,0,0);
+        var p = new Player(gamepad, player_body);
+        players[gamepad] = p;
+        camera.lockedTarget = player_body;
+    });
+
+    gamepadManager.onGamepadDisconnectedObservable.add((gamepad, state)=>{
+        const msg = "Disconnected: " + gamepad.id;
+        console.log(msg);
+        players[gamepad] = null;
+    })
+    return gamepadManager;
+}
+
 class Player {
     constructor(gamepad, body) {
         this.gamepad = gamepad
@@ -62,7 +83,6 @@ function start_websnake() {
     const canvas = document.getElementById("renderCanvas"); // Get the canvas element
     const engine = new BABYLON.Engine(canvas, true); // Generate the BABYLON 3D engine
 
-    // Add your code here matching the playground format
     const createScene = function () {
 
         const scene = new BABYLON.Scene(engine);  
@@ -83,26 +103,9 @@ function start_websnake() {
             pebble.position = random_vector(10);
         }
 
-        const player_body = BABYLON.MeshBuilder.CreateBox("player_body", {});
-        player_body.position = Vec3(0,0,0);
-        camera.lockedTarget = player_body;
-
         const players = {}
 
-        var gamepadManager = new BABYLON.GamepadManager();
-        gamepadManager.onGamepadConnectedObservable.add((gamepad, state)=>{
-            const msg = "Connected: " + gamepad.id;
-            console.log(msg);
-
-            var p = new Player(gamepad, player_body);
-            players[gamepad] = p;
-        });
-
-        gamepadManager.onGamepadDisconnectedObservable.add((gamepad, state)=>{
-            const msg = "Disconnected: " + gamepad.id;
-            console.log(msg);
-            players[gamepad] = null;
-        })
+        var gamepadManager = create_gamepad_manager(players, camera);
 
         scene.registerBeforeRender(function () {
             for (gamepad in players)
