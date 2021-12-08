@@ -122,13 +122,29 @@ class PlayerInput {
         this.target.move_input = this.get_move();
     }
     get_move() {
+        const sum = Vec3(0,0,0);
+        let count = 0
+
         if (this.gamepad) {
-            return this.stick_to_vec3(this.gamepad.leftStick);
+            const v = this.stick_to_vec3(this.gamepad.leftStick)
+            if (v.lengthSquared() > 0.1) {
+                sum.addInPlace(v)
+                count += 1
+            }
         }
+
         const v = Vec3(0,0,0);
         v.x = this.input.buttons.d - this.input.buttons.a;
         v.y = this.input.buttons.s - this.input.buttons.w;
-        return v;
+        if (v.lengthSquared() > 0.1) {
+            sum.addInPlace(v)
+            count += 1
+        }
+
+        if (count > 1) {
+            sum.scaleInPlace(1/count)
+        }
+        return sum;
     }
     stick_to_vec3(values) {
         const v = Vec3(values.x, values.y);
