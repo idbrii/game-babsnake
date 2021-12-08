@@ -199,7 +199,7 @@ function start_websnake() {
         camera.radius = 30;
         camera.heightOffset = 0;
         camera.rotationOffset = 0;
-        camera.cameraAcceleration = 0.05;
+        camera.cameraAcceleration = 0.002;
         camera.maxCameraSpeed = 10;
         camera.attachControl(canvas, true);
 
