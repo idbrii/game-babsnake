@@ -79,34 +79,31 @@ class Input {
     }
 }
 
-function create_gamepad_manager(local_player) {
+function create_gamepad_manager(player_input) {
     var gamepadManager = new BABYLON.GamepadManager();
     gamepadManager.onGamepadConnectedObservable.add((gamepad, state)=>{
         const msg = "Connected: " + gamepad.id;
         console.log(msg);
 
-        local_player.gamepad = gamepad
+        player_input.gamepad = gamepad
     });
 
     gamepadManager.onGamepadDisconnectedObservable.add((gamepad, state)=>{
         const msg = "Disconnected: " + gamepad.id;
         console.log(msg);
-        if (local_player.gamepad == gamepad) {
-            local_player.gamepad = null
+        if (player_input.gamepad == gamepad) {
+            player_input.gamepad = null
         }
     })
     return gamepadManager;
 }
 
-class Player {
-    constructor(head, input) {
-        this.gamepad = null;
-        this.input = input
-        this.head = head
+class PlayerInput {
+    constructor(input, target) {
+        this.input = input;
+        this.target = target
         this.deadzone = 0.25
         this.deadzone_sq = this.deadzone * this.deadzone;
-        this.speed = 0.005;
-        this.body = [head]
 
         // Clear out movement keys to ensure valid values.
         this.input.on_button_up("keyboard", 'w')
@@ -115,20 +112,7 @@ class Player {
         this.input.on_button_up("keyboard", 'd')
     }
     update(dt) {
-        var move = this.get_move();
-        //~ console.log("x:" + move.x.toFixed(3) + " y:" + move.y.toFixed(3));
-        move.scaleInPlace(-1 * this.speed * dt); // axes are both flipped
-        if (move.lengthSquared() > 0.0001) {
-            for (let i = this.body.length - 1; i > 0; i--)
-            {
-                const b = this.body[i];
-                const dest = this.body[i-1].position;
-                b.position = BABYLON.Vector3.Lerp(b.position, dest, 0.1);
-            }
-        }
-        // For some reason this.head.position.add(move) produces Nan.
-        this.head.position.x += move.x;
-        this.head.position.y += move.y;
+        this.target.move_input = this.get_move();
     }
     get_move() {
         if (this.gamepad) {
@@ -149,6 +133,32 @@ class Player {
             v.y = 0;
         }
         return v
+    }
+}
+
+class Player {
+    constructor(head) {
+        this.gamepad = null;
+        this.head = head
+        this.speed = 0.005;
+        this.body = [head]
+        this.move_input = Vec2(0,0);
+    }
+    update(dt) {
+        var move = this.move_input
+        //~ console.log("x:" + move.x.toFixed(3) + " y:" + move.y.toFixed(3));
+        move.scaleInPlace(-1 * this.speed * dt); // axes are both flipped
+        if (move.lengthSquared() > 0.0001) {
+            for (let i = this.body.length - 1; i > 0; i--)
+            {
+                const b = this.body[i];
+                const dest = this.body[i-1].position;
+                b.position = BABYLON.Vector3.Lerp(b.position, dest, 0.1);
+            }
+        }
+        // For some reason this.head.position.add(move) produces Nan.
+        this.head.position.x += move.x;
+        this.head.position.y += move.y;
     }
     collide(pebble) {
         pebble.dispose();
@@ -188,7 +198,8 @@ function start_websnake() {
         camera.lockedTarget = player_head;
 
         const input = new Input();
-        const local_player = new Player(player_head, input);
+        const local_player = new Player(player_head);
+        const player_input = new PlayerInput(input, local_player);
         const players = [
             local_player,
         ];
@@ -219,13 +230,15 @@ function start_websnake() {
 
         // For some reason, this takes a long time to start working.
         input.listen_to_keyboard(scene);
-        var gamepadManager = create_gamepad_manager(local_player);
+        var gamepadManager = create_gamepad_manager(player_input);
 
         scene.registerBeforeRender(function () {
+            const dt = engine.getDeltaTime()
+            player_input.update(dt);
             for (var i in players)
             {
                 const p = players[i];
-                p.update(engine.getDeltaTime());
+                p.update(dt);
             }
         })
 
